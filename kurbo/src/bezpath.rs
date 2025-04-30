@@ -307,6 +307,17 @@ impl BezPath {
         flatten(self, tolerance, callback);
     }
 
+    /// Get current point of path. Returns `Ǹone` if path is empty or closed.
+    pub fn current_point(&self) -> Option<Point> {
+        self.0.last().and_then(|last| match last {
+            PathEl::MoveTo(p) => Some(*p),
+            PathEl::LineTo(p) => Some(*p),
+            PathEl::QuadTo(_, p2) => Some(*p2),
+            PathEl::CurveTo(_, _, p3) => Some(*p3),
+            PathEl::ClosePath => None,
+        })
+    }
+
     /// Get the segment at the given element index.
     ///
     /// If you need to access all segments, [`segments`] provides a better
