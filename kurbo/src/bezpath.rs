@@ -393,6 +393,17 @@ impl BezPath {
         cbox.unwrap_or_default()
     }
 
+    /// Get the last point of the path, if path is not empty.
+    pub fn last_point(&self) -> Option<Point> {
+        match self.0.last()? {
+            PathEl::MoveTo(p) => Some(*p),
+            PathEl::LineTo(p1) => Some(*p1),
+            PathEl::QuadTo(_, p2) => Some(*p2),
+            PathEl::CurveTo(_, _, p3) => Some(*p3),
+            PathEl::ClosePath => segments(self).last_point(),
+        }
+    }
+
     /// Returns a new path with the winding direction of all subpaths reversed.
     pub fn reverse_subpaths(&self) -> BezPath {
         let elements = self.elements();
@@ -832,6 +843,12 @@ impl<I: Iterator<Item = PathEl>> Segments<I> {
             }
         }
         bbox.unwrap_or_default()
+    }
+
+    pub(crate) fn last_point(mut self) -> Option<Point> {
+        // go through iterator to compute last point
+        for _ in self.by_ref() {}
+        self.start_last.map(|(_start, last)| last)
     }
 }
 
@@ -2018,5 +2035,21 @@ mod tests {
 
     fn reverse_test_helper(contour: Vec<PathEl>, expected: Vec<PathEl>) {
         assert_eq!(BezPath(contour).reverse_subpaths().0, expected);
+    }
+
+    #[test]
+    fn test_last_point() {
+        let mut path = BezPath::new();
+        assert_eq!(path.last_point(), None);
+        path.move_to((0., 0.));
+        assert_eq!(path.last_point(), Some(Point::new(0., 0.)));
+        path.line_to((10., 10.));
+        assert_eq!(path.last_point(), Some(Point::new(10., 10.)));
+        path.line_to((10., 0.));
+        assert_eq!(path.last_point(), Some(Point::new(10., 0.)));
+        path.close_path();
+        assert_eq!(path.last_point(), Some(Point::new(0., 0.)));
+        path.line_to((0., 10.));
+        assert_eq!(path.last_point(), Some(Point::new(0., 10.)));
     }
 }
